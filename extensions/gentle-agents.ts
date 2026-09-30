@@ -117,6 +117,7 @@ const defaultDeps = (env: NodeJS.ProcessEnv): AgentsDeps => ({
 		return () => clearTimeout(timer);
 	},
 	pi: piCommand(),
+	resolvePi: () => piCommand(),
 	home: os.homedir(),
 	resolveWorktree: resolveSessionWorktree,
 	env,
