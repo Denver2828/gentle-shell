@@ -23,7 +23,7 @@ Users have no local view of their Pi usage history (tokens, cost, models, activi
 - Subagent nested sessions are not summed in v1 (disclosed in panel footnote).
 
 ## Delivery
-Strategy: `single-pr` (user-approved size exception). Forecast ~1100 authored lines.
+Strategy: `single-pr` (user-selected delivery strategy; no protected `size:exception` label authorization inferred). Original forecast ~1100 authored lines; observed branch diff before delivery bookkeeping: 1706 additions + 5 deletions.
 
 ## Tasks
 - [x] T1 Stats collector (`lib/stats-collector.ts`): parse JSONL → totals, per-model, per-day, sessions, active days, longest session, longest/current streak, most active day, range+scope filters; unit tests with fixtures. Route: delegated (writer; preparation trigger). Risk: medium (writer self-verification). Commit: `24f7b61d` feat(stats): add session usage collector.
@@ -64,3 +64,17 @@ User authorized combining Gentle Shell and regular Pi histories by default. Diag
 
 ## Next step
 T4 work-unit commit and native review, then user visual recheck from a fresh launch. Source merge is user-authorized; push/PR remain pending.
+
+## T4 parent closure evidence
+- Work-unit commit: `aabedff9cdd3604958aa25cca792cb0d3574c4f9` (`fix(stats): include original Pi session history`).
+- User visual verification: user confirmed it now works on 2026-10-01.
+- Native review slice: base `37fb12414eec5aa00db10901cede37b491dce276`, lineage `review-f23932c0f0491ac3`. Capture rejected at admission because reviewer reported unavailable candidate inspection while claiming completed inspection. No verdict admitted, no acknowledgement. Fresh STATUS reoffers reviewer slot; review remains pending. Do not replay rejected bytes.
+- T4 stays unchecked: focused checks still have two proven baseline failures; native review is pending. No source defect was reported by independent verification.
+
+## Delivery preparation
+- GitHub canonical destination: `Gentleman-Programming/gentle-shell` (renamed from gentle-pi), default branch `main`. User authorized gh-session reads, push, PR and merge after checks; separately authorized a new issue and `status:approved`.
+- Issue `#1629` created and read back confirmed, approved; user selected closing reference for this dedicated historical-dashboard issue. Broader `#1583` stays open.
+- T4 review retry was admitted and approved, then acknowledged: lineage `review-f23932c0f0491ac3`, consumed revision `sha256:3a9823cea06c0ab491fd66c8be1cbbb364fc5508dbac798949b3e4d5c8a89625`. This supersedes the prior rejection/pending state above.
+- Nonblocking review follow-ups: provider/home wiring tests, divergent same-ID copies, POSIX fixture paths and Windows symlink test permissions. No correction route opened.
+- T4 implementation, independent verification and user visual verification are observed. Two focused baseline pin failures remain; full T4 suite/Windows verification not rerun locally. CI results pending; no waiver inferred.
+- Remote main observed at `4efd7b783cbd768c255d75ef0d1fee8876a6738d`. No branch protection or rulesets returned, but repository CI must still be checked before merge.
