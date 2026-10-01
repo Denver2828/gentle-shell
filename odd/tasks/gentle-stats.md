@@ -26,10 +26,12 @@ Users have no local view of their Pi usage history (tokens, cost, models, activi
 Strategy: `single-pr` (user-approved size exception). Forecast ~1100 authored lines.
 
 ## Tasks
-- [x] T1 Stats collector (`lib/stats-collector.ts`): parse JSONL → totals, per-model, per-day, sessions, active days, longest session, longest/current streak, most active day, range+scope filters; unit tests with fixtures. Route: delegated (writer; preparation trigger). Risk: medium (writer self-verification). Commit: the `feat(stats): add session usage collector` commit (hash recorded in T2).
+- [x] T1 Stats collector (`lib/stats-collector.ts`): parse JSONL → totals, per-model, per-day, sessions, active days, longest session, longest/current streak, most active day, range+scope filters; unit tests with fixtures. Route: delegated (writer; preparation trigger). Risk: medium (writer self-verification). Commit: `24f7b61d` feat(stats): add session usage collector.
   - Evidence: RED `tests/stats-collector.test.ts` failed (module missing); GREEN 11/11 pass; `pnpm typecheck` no regressions. Real-data probe (read-only): 151 sessions, cold load 1.96 s, warm 3 ms (mtime/size cache).
   - Notes: lines +/- come from `SessionChanges` for the live session only (historical patch regeneration would be too costly); session wall time = header timestamp → last assistant message; current streak survives an idle today.
-- [ ] T2 Stats view (`lib/stats-view.ts`): tabs, heatmap, range/scope toggles, q/esc close, pointer footer; unit tests. Route: delegated.
+- [x] T2 Stats view (`lib/stats-view.ts`): tabs, heatmap, range/scope toggles, q/esc close, pointer footer; unit tests. Route: delegated. Risk: medium (writer self-verification). Commit: the `feat(stats): add stats overlay view` commit (hash recorded in T3).
+  - Evidence: RED `tests/stats-view.test.ts` failed (module missing); GREEN 9/9 (collector + view 20/20); `pnpm typecheck` no regressions. Widths 48/100/120 asserted cell-exact.
+  - Notes: heatmap shades are glyph density (`· ░ ▒ ▓ █`) in theme roles `borderMuted`/`accent`, so every Gentle theme recolors it; clickable header tabs, `[× Close]`, and footer hints follow the `UsageView` span pattern with `paintHoverable`. Below ~56 columns the range/scope label is dropped from the tabs row.
 - [ ] T3 Command wiring (`extensions/gentle-stats.ts` + package registration): `/gentle:stats`, optional shortcut with env `off`, overlay pattern from `openOverlay`, docs; tests. Route: delegated.
 
 ## Acceptance criteria
