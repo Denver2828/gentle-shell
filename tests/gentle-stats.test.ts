@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { stripAnsi } from "../lib/terminal-theme.ts";
-import gentleStats, { STATS_COMMAND_NAME, statsViewKey } from "../extensions/gentle-stats.ts";
+import gentleStats, { STATS_COMMAND_NAME, statsSessionRoots, statsViewKey } from "../extensions/gentle-stats.ts";
 
 // /gentle:stats wiring: the command (and optional shortcut) opens the stats
 // panel as a full-terminal overlay, loads sessions after it opens, closes
 // with a forced repaint, and session shutdown force-closes it.
 
-const SESSIONS = fileURLToPath(new URL("./fixtures/stats/sessions", import.meta.url));
+const STATS_HOME = fileURLToPath(new URL("./fixtures/stats", import.meta.url));
+const SESSIONS = join(STATS_HOME, "sessions");
+const USER_PI_HOME = join(STATS_HOME, "user-pi");
 const NOW = Date.parse("2026-10-01T12:00:00.000Z");
 
 type Handler = (event: unknown, ctx: ExtensionContext) => unknown;
@@ -79,7 +82,7 @@ test("registers /gentle:stats and only registers a shortcut when one is configur
 
 test("the command opens a full-terminal overlay that loads, renders, and closes with a repaint", async () => {
 	const { pi, commands } = fakePi();
-	gentleStats(pi, { env: {}, now: () => NOW, sessionsRoot: () => SESSIONS });
+	gentleStats(pi, { env: {}, now: () => NOW, sessionsRoots: () => [SESSIONS] });
 	const context = fakeContext();
 	const opened = commands.get(STATS_COMMAND_NAME)!.handler("", context.ctx);
 	assert.deepEqual(context.options[0], { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%", margin: 0, anchor: "center" } });
@@ -95,9 +98,28 @@ test("the command opens a full-terminal overlay that loads, renders, and closes 
 	assert.ok(context.renders.includes(true), "closing forces a full repaint");
 });
 
+test("stats read the active home and the user's original Pi home, falling back to the conventional one", () => {
+	assert.deepEqual(statsSessionRoots("/gs/agent", { GENTLE_SHELL_USER_PI_HOME: "/custom/pi" }, "/home/u"), ["/gs/agent/sessions", "/custom/pi/sessions"]);
+	// Launched directly (or by an older launcher): the conventional ~/.pi/agent, never PI_CODING_AGENT_DIR.
+	assert.deepEqual(statsSessionRoots("/gs/agent", { PI_CODING_AGENT_DIR: "/gs/agent" }, "/home/u"), ["/gs/agent/sessions", "/home/u/.pi/agent/sessions"]);
+	assert.deepEqual(statsSessionRoots("/gs/agent", { GENTLE_SHELL_USER_PI_HOME: "" }, "/home/u"), ["/gs/agent/sessions", "/home/u/.pi/agent/sessions"]);
+});
+
+test("the overlay totals combine the Gentle Shell and regular Pi histories", async () => {
+	const { pi, commands } = fakePi();
+	gentleStats(pi, { env: {}, now: () => NOW, sessionsRoots: () => statsSessionRoots(STATS_HOME, { GENTLE_SHELL_USER_PI_HOME: USER_PI_HOME }) });
+	const context = fakeContext();
+	const opened = commands.get(STATS_COMMAND_NAME)!.handler("", context.ctx);
+	const view = context.component()!;
+	await until(() => !view.render(100).map(stripAnsi).join("\n").includes("Loading"));
+	assert.match(view.render(100).map(stripAnsi).join("\n"), /Total tokens +5\.8k/);
+	view.handleInput!("q");
+	await opened;
+});
+
 test("the shortcut opens the same overlay", async () => {
 	const { pi, shortcuts } = fakePi();
-	gentleStats(pi, { env: { GENTLE_PI_STATS_VIEW_KEY: "alt+t" }, now: () => NOW, sessionsRoot: () => SESSIONS });
+	gentleStats(pi, { env: { GENTLE_PI_STATS_VIEW_KEY: "alt+t" }, now: () => NOW, sessionsRoots: () => [SESSIONS] });
 	const context = fakeContext();
 	const opened = shortcuts.get("alt+t")!.handler(context.ctx);
 	assert.equal(context.options.length, 1);
@@ -108,7 +130,7 @@ test("the shortcut opens the same overlay", async () => {
 
 test("non-TUI modes get a notice and headless contexts get nothing", async () => {
 	const { pi, commands } = fakePi();
-	gentleStats(pi, { env: {}, sessionsRoot: () => SESSIONS });
+	gentleStats(pi, { env: {}, sessionsRoots: () => [SESSIONS] });
 	const rpc = fakeContext("rpc");
 	await commands.get(STATS_COMMAND_NAME)!.handler("", rpc.ctx);
 	assert.deepEqual(rpc.notices, ["The stats overlay requires TUI mode."]);
@@ -121,7 +143,7 @@ test("non-TUI modes get a notice and headless contexts get nothing", async () =>
 
 test("session shutdown force-closes an open overlay", async () => {
 	const { pi, commands, fire } = fakePi();
-	gentleStats(pi, { env: {}, now: () => NOW, sessionsRoot: () => SESSIONS });
+	gentleStats(pi, { env: {}, now: () => NOW, sessionsRoots: () => [SESSIONS] });
 	const context = fakeContext();
 	const opened = commands.get(STATS_COMMAND_NAME)!.handler("", context.ctx);
 	await fire("session_shutdown", context.ctx);

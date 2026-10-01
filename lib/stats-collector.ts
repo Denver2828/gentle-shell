@@ -1,12 +1,13 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { listSessionFiles } from "../extensions/history/session-scan.ts";
 import { SessionChanges } from "./session-changes.ts";
 
 // /gentle:stats data: a read-only, failure-tolerant scan of Pi's top-level
-// session files (nested subagent runs are excluded by listSessionFiles) and
-// pure aggregation over the parsed records. Nothing here persists anything.
+// session files (nested subagent runs are excluded by listSessionFiles) across
+// one or more homes, and pure aggregation over the parsed records. Nothing
+// here persists anything.
 // Day keys are local calendar dates ("YYYY-MM-DD"); key arithmetic runs in
 // UTC so it never drifts across DST changes.
 
@@ -214,17 +215,42 @@ async function readSessionFile(path: string): Promise<SessionRecord | undefined>
 }
 
 export interface StatsLoader {
-	load(sessionsRoot: string): Promise<SessionRecord[]>;
+	load(sessionsRoots: string | readonly string[]): Promise<SessionRecord[]>;
 }
 
-/** A loader that re-reads only files whose size or mtime changed since the last load. */
+// Roots resolve through realpath so an alias (trailing slash, "..", a
+// symlink) of a root already listed is read once; a missing root is skipped.
+function sessionFiles(sessionsRoots: readonly string[]): string[] {
+	const roots = new Set<string>();
+	for (const root of sessionsRoots) {
+		try {
+			roots.add(realpathSync(root));
+		} catch {
+			// a missing or unreadable root contributes nothing
+		}
+	}
+	return [...new Set([...roots].flatMap(listSessionFiles))];
+}
+
+const lastUsageAt = (record: SessionRecord): number => record.messages.reduce((latest, message) => Math.max(latest, message.timestamp), -Infinity);
+
+// The same session can exist in two homes (a copied or migrated history).
+// Only one copy counts: the one with more usage records, then the one whose
+// last usage is newest; on a full tie the first file in path order stays.
+function preferredCopy(kept: SessionRecord, other: SessionRecord): SessionRecord {
+	if (other.messages.length !== kept.messages.length) return other.messages.length > kept.messages.length ? other : kept;
+	return lastUsageAt(other) > lastUsageAt(kept) ? other : kept;
+}
+
+/** A loader over one or more sessions roots that re-reads only files whose size or mtime changed since the last load. */
 export function createStatsLoader(): StatsLoader {
 	const cache = new Map<string, { size: number; mtimeMs: number; record: SessionRecord | undefined }>();
 	return {
-		async load(sessionsRoot) {
-			const files = listSessionFiles(sessionsRoot);
+		async load(sessionsRoots) {
+			const files = sessionFiles(typeof sessionsRoots === "string" ? [sessionsRoots] : sessionsRoots).sort();
 			const live = new Set(files);
 			for (const path of cache.keys()) if (!live.has(path)) cache.delete(path);
+			const byId = new Map<string, SessionRecord>();
 			const sessions: SessionRecord[] = [];
 			for (const path of files) {
 				let info;
@@ -238,9 +264,13 @@ export function createStatsLoader(): StatsLoader {
 					cached = { size: info.size, mtimeMs: info.mtimeMs, record: await readSessionFile(path) };
 					cache.set(path, cached);
 				}
-				if (cached.record) sessions.push(cached.record);
+				const record = cached.record;
+				if (!record) continue;
+				// A header without an ID cannot be matched to another copy.
+				if (record.id === UNKNOWN) sessions.push(record);
+				else byId.set(record.id, byId.has(record.id) ? preferredCopy(byId.get(record.id)!, record) : record);
 			}
-			return sessions;
+			return [...byId.values(), ...sessions];
 		},
 	};
 }

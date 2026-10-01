@@ -254,7 +254,7 @@ A finished list stays on screen for the turn it finished in and clears at the ne
 
 ### Gentle Stats
 
-`/gentle:stats` opens a full-terminal panel over your local usage history, read from the session files Pi already writes under `~/.pi/agent/sessions`. Nothing new is stored. Subscription limits stay in `/gentle:usage`.
+`/gentle:stats` opens a full-terminal panel over your local usage history, read from the session files Pi already writes. It combines the active home's `sessions` directory with your regular Pi home's (`~/.pi/agent/sessions`, or the custom `PI_CODING_AGENT_DIR` that `gentle-shell` recorded as `GENTLE_SHELL_USER_PI_HOME` before isolating). The same directory reached twice counts once, and a session present in both homes counts once (the copy with more usage records, then the most recent one). Nothing new is stored. Subscription limits stay in `/gentle:usage`.
 
 ```text
 ╭─ ✿ Stats ─────────────────────────────────────── [×] ─╮
