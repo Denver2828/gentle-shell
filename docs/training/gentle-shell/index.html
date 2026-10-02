@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gentle Shell — Capacitación</title>
+<style>
+  /* Gentleman-Cute palette (themes/Gentleman-Cute.json) */
+  :root {
+    --bg: #060407;
+    --panel: #100A0F;
+    --user: #2A1523;
+    --border: #563040;
+    --border-subtle: #2A1720;
+    --text: #F6EFF3;
+    --muted: #A78E9B;
+    --dim: #76616B;
+    --accent: #F095C8;
+    --deep-pink: #C96AA2;
+    --active-pink: #FFB1DD;
+    --champagne: #E0C27A;
+    --pearl: #D2CBD0;
+    --soft-rose: #D7A0B8;
+    --powder-blue: #A9C7EE;
+    --mint: #B4E7C7;
+    --peach: #F2B86D;
+    --sky: #C4DAF6;
+    --error: #FF718F;
+    --sans: "Inter", "SF Pro Display", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Iosevka", "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 6vh 7vw 8vh;
+    opacity: 0; pointer-events: none;
+    transform: translateY(14px) scale(.99);
+    transition: opacity .45s ease, transform .45s ease;
+    background:
+      radial-gradient(1200px 600px at 110% -10%, rgba(240,149,200,.13), transparent 60%),
+      radial-gradient(900px 500px at -10% 120%, rgba(169,199,238,.08), transparent 60%),
+      var(--bg);
+  }
+  .slide.active { opacity: 1; pointer-events: auto; transform: none; }
+
+  /* typography */
+  .kicker { font-family: var(--mono); font-size: 1.05rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 1.4vh; }
+  .kicker::before { content: "✿ "; color: var(--soft-rose); }
+  h1 { font-size: clamp(2.6rem, 6vw, 5.6rem); line-height: 1.02; font-weight: 800; letter-spacing: -.03em; }
+  h2 { font-size: clamp(2rem, 3.6vw, 3.4rem); line-height: 1.08; font-weight: 750; letter-spacing: -.02em; margin-bottom: 3.5vh; }
+  h3 { font-size: 1.35rem; color: var(--champagne); margin-bottom: .6rem; font-weight: 700; }
+  p, li { font-size: clamp(1.05rem, 1.45vw, 1.45rem); line-height: 1.5; color: var(--pearl); }
+  .lead { font-size: clamp(1.25rem, 1.9vw, 1.8rem); color: var(--muted); max-width: 62ch; margin-top: 2.4vh; }
+  .pink { color: var(--accent); } .gold { color: var(--champagne); } .mint { color: var(--mint); }
+  .blue { color: var(--powder-blue); } .rose { color: var(--soft-rose); } .peach { color: var(--peach); }
+  .muted { color: var(--muted); } .dim { color: var(--dim); }
+  .grad { background: linear-gradient(90deg, var(--active-pink), var(--accent) 45%, var(--champagne)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  code, .mono { font-family: var(--mono); }
+  code { background: var(--user); color: var(--champagne); padding: .1em .4em; border-radius: 6px; font-size: .9em; }
+  ul.clean { list-style: none; display: grid; gap: 1.4vh; }
+  ul.clean li { padding-left: 1.6em; position: relative; }
+  ul.clean li::before { content: "❀"; position: absolute; left: 0; color: var(--accent); }
+
+  /* layout helpers */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; align-items: center; }
+  .grid-2:has(> .card) { align-items: stretch; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6vw; }
+  .split { display: grid; grid-template-columns: 5fr 7fr; gap: 3.5vw; align-items: center; }
+  .card {
+    background: linear-gradient(180deg, rgba(42,21,35,.55), rgba(16,10,15,.9));
+    border: 1px solid var(--border-subtle); border-radius: 18px; padding: 2.6vh 1.6vw;
+    box-shadow: 0 0 0 1px rgba(240,149,200,.04), 0 18px 40px -24px rgba(240,149,200,.35);
+  }
+  .card p, .card li { font-size: clamp(.95rem, 1.2vw, 1.2rem); }
+  .card .icon { font-size: 2rem; margin-bottom: .8rem; display: block; }
+  .card.accent { border-color: var(--border); }
+  .shot { width: 100%; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 30px 60px -30px rgba(240,149,200,.45); }
+  .diagram { width: 100%; max-height: 62vh; object-fit: contain; border-radius: 14px; background: var(--panel); border: 1px solid var(--border-subtle); padding: 1.4vh; }
+  .quote { border-left: 4px solid var(--deep-pink); padding: 1.2vh 1.4vw; background: rgba(42,21,35,.45); border-radius: 0 14px 14px 0; font-size: clamp(1.15rem, 1.7vw, 1.6rem); color: var(--text); margin-top: 3vh; }
+  .pill { display: inline-block; font-family: var(--mono); font-size: .85rem; padding: .25em .8em; border-radius: 999px; border: 1px solid var(--border); color: var(--active-pink); background: rgba(240,149,200,.07); margin: 0 .4em .4em 0; }
+
+  /* terminal */
+  .term { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; font-family: var(--mono); box-shadow: 0 30px 60px -30px rgba(240,149,200,.4); }
+  .term .bar { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); background: #0b070a; }
+  .term .bar i { width: 12px; height: 12px; border-radius: 50%; background: var(--border); }
+  .term .bar i:nth-child(1) { background: var(--error); } .term .bar i:nth-child(2) { background: var(--peach); } .term .bar i:nth-child(3) { background: var(--mint); }
+  .term pre { padding: 2.2vh 1.6vw; font-size: clamp(.9rem, 1.2vw, 1.15rem); line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+  .term .c { color: var(--dim); } .term .p { color: var(--accent); } .term .k { color: var(--champagne); } .term .s { color: var(--mint); }
+
+  /* ODD steps */
+  .steps { display: grid; grid-template-columns: repeat(7, 1fr); gap: .8vw; margin-top: 2vh; }
+  .step { background: var(--panel); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 2vh .8vw; text-align: center; }
+  .step b { display: block; font-family: var(--mono); color: var(--accent); font-size: 1.7rem; }
+  .step span { display: block; color: var(--champagne); font-weight: 700; margin: .5rem 0 .4rem; font-size: 1.05rem; }
+  .step small { color: var(--muted); font-size: .9rem; line-height: 1.35; display: block; }
+  .step.hl { border-color: var(--accent); background: linear-gradient(180deg, rgba(240,149,200,.14), var(--panel)); }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: clamp(.95rem, 1.25vw, 1.2rem); }
+  th { text-align: left; color: var(--champagne); font-weight: 700; padding: 1.2vh .8vw; border-bottom: 1px solid var(--border); }
+  td { padding: 1.1vh .8vw; border-bottom: 1px solid var(--border-subtle); color: var(--pearl); vertical-align: top; }
+  td:first-child { font-family: var(--mono); color: var(--accent); white-space: nowrap; }
+
+  /* cover */
+  .cover { align-items: flex-start; }
+  .cover .banner { width: min(46vw, 760px); border-radius: 16px; border: 1px solid var(--border); margin-bottom: 4vh; box-shadow: 0 30px 80px -30px rgba(240,149,200,.55); }
+  .petals { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .petals span { position: absolute; top: -5vh; font-size: 1.4rem; color: var(--soft-rose); opacity: .35; animation: fall linear infinite; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .petals { display: none; } .slide { transition: none; } }
+
+  /* chrome */
+  .progress { position: fixed; left: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, var(--deep-pink), var(--accent), var(--champagne)); transition: width .35s ease; z-index: 10; }
+  .counter { position: fixed; right: 2vw; bottom: 2vh; font-family: var(--mono); color: var(--dim); font-size: .95rem; z-index: 10; }
+  .brand { position: fixed; left: 2vw; bottom: 2vh; font-family: var(--mono); color: var(--dim); font-size: .95rem; z-index: 10; }
+  .brand b { color: var(--accent); font-weight: 600; }
+  .hint { position: fixed; top: 2vh; right: 2vw; font-family: var(--mono); color: var(--dim); font-size: .8rem; z-index: 10; transition: opacity 1s; }
+
+  /* print / PDF: one slide per page */
+  @media print {
+    @page { size: 1600px 900px; margin: 0; }
+    html, body { overflow: visible; height: auto; }
+    .deck { height: auto; }
+    .slide { position: relative; width: 1600px; height: 900px; opacity: 1; transform: none; page-break-after: always; break-after: page; }
+    .progress, .counter, .brand, .hint, .petals { display: none; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 1. Cover -->
+  <section class="slide cover active">
+    <div class="petals" aria-hidden="true"></div>
+    <img class="banner" src="../../assets/brand/gentle-shell-banner.gif" alt="gentle-shell">
+    <div class="kicker">Capacitación · Todo lo nuevo</div>
+    <h1>Tu agente de código,<br><span class="grad">en el workspace que tú lideras.</span></h1>
+    <p class="lead">Qué es Gentle Shell, cómo funciona por dentro y cómo usarlo para entregar mejor: menos regresiones, mejor evidencia y diagnósticos más rápidos.</p>
+  </section>
+
+  <!-- 2. Agenda -->
+  <section class="slide">
+    <div class="kicker">Agenda</div>
+    <h2>Lo que vamos a ver hoy</h2>
+    <div class="grid-3">
+      <div class="card"><span class="icon">🌸</span><h3>1 · Qué es</h3><p>El problema que resuelve, las piezas del ecosistema y cómo se instala.</p></div>
+      <div class="card"><span class="icon">🧭</span><h3>2 · Cómo trabaja</h3><p>el Gentleman, ODD, agentes enfocados, cambios trazables y revisión nativa.</p></div>
+      <div class="card"><span class="icon">🧪</span><h3>3 · Para nuestro equipo</h3><p>Testing, regresiones, diagnóstico y conocimiento compartido. Demo y ejercicio.</p></div>
+    </div>
+    <div class="quote">La pregunta guía: <span class="pink">¿cómo usamos IA para entregar mejor, con menos regresiones, mejor evidencia y más velocidad de diagnóstico?</span></div>
+  </section>
+
+  <!-- 3. Problem -->
+  <section class="slide">
+    <div class="kicker">El problema</div>
+    <div class="split">
+      <div>
+        <h2>Un agente en una terminal pelada es una <span class="pink">caja negra</span>.</h2>
+        <p class="muted">“¿Qué está haciendo?” solo se responde leyendo scrollback.</p>
+      </div>
+      <ul class="clean">
+        <li>No sabes <b class="gold">qué archivos tocó</b> sin correr <code>git status</code>.</li>
+        <li>Las tareas largas <b class="gold">se pierden</b> si se corta la sesión.</li>
+        <li>El contexto se <b class="gold">infla</b>: el agente lee todo y se olvida de lo importante.</li>
+        <li>Cada persona usa la IA <b class="gold">a su manera</b>: no hay formato común ni evidencia revisable.</li>
+        <li>La IA decide sola cosas que <b class="gold">deberían ser del humano</b>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4. What is -->
+  <section class="slide">
+    <div class="kicker">Qué es Gentle Shell</div>
+    <h2>Una capa de <span class="pink">disciplina</span> sobre un agente potente</h2>
+    <div class="grid-3">
+      <div class="card accent"><span class="icon">π</span><h3>Pi</h3><p>El agente de código base: modelos, herramientas, sesiones. Gentle Shell es <b>nativo de Pi</b>.</p></div>
+      <div class="card accent"><span class="icon">🌹</span><h3>gentle-shell</h3><p>El workspace: orquestación, cambios en vivo, agentes, TODO, uso de modelos, diffs, seguridad.</p></div>
+      <div class="card accent"><span class="icon">🧠</span><h3>Gentle AI</h3><p>El ecosistema: skills, revisión nativa, memoria persistente opcional (Engram), CodeGraph.</p></div>
+    </div>
+    <div class="quote">No es prompt engineering. Es <span class="pink">disciplina de runtime</span>: tú diriges, el agente ejecuta, y todo deja evidencia.</div>
+  </section>
+
+  <!-- 5. Install -->
+  <section class="slide">
+    <div class="kicker">Instalación</div>
+    <div class="grid-2">
+      <div>
+        <h2>Un comando, <span class="pink">sin tocar</span> tu instalación de Pi</h2>
+        <ul class="clean">
+          <li><code>gentle-shell</code> arranca en su propio home (<code>~/.gentle-shell/agent</code>) y se configura solo la primera vez.</li>
+          <li><code>--link</code> reutiliza tus logins, modelos y chats de Pi.</li>
+          <li>Tema <span class="pink">Gentleman-Cute</span> por defecto en el home propio.</li>
+        </ul>
+      </div>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="c"># instalar</span>
+<span class="p">❯</span> npm i -g gentle-pi
+
+<span class="c"># home propio, no toca Pi</span>
+<span class="p">❯</span> gentle-shell
+
+<span class="c"># reutilizar tu Pi existente</span>
+<span class="p">❯</span> gentle-shell --link
+
+<span class="c"># diagnóstico rápido</span>
+<span class="p">❯</span> <span class="k">/gentle:status</span>
+<span class="p">❯</span> <span class="k">/gentle:doctor</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Workspace tour -->
+  <section class="slide">
+    <div class="kicker">El workspace</div>
+    <div class="split">
+      <div>
+        <h2>Lideras el trabajo, <span class="pink">no lo persigues</span></h2>
+        <ul class="clean">
+          <li><b class="gold">Cabecera</b>: rama, modelo y medidor de contexto.</li>
+          <li><b class="gold">Rail lateral</b>: Status → Changes → TODO.</li>
+          <li><b class="gold">Pétalo del prompt</b>: <span class="mono rose">working</span> / <span class="mono rose">queued</span> y la fase actual.</li>
+          <li><b class="gold">Uso y costo</b> por proveedor, en vivo.</li>
+        </ul>
+      </div>
+      <img class="shot" src="../../assets/features/gentle-shell.png" alt="Gentle Shell en una sesión real">
+    </div>
+  </section>
+
+  <!-- 7. el Gentleman -->
+  <section class="slide">
+    <div class="kicker">el Gentleman</div>
+    <h2>Pensar <span class="pink">antes</span> de construir</h2>
+    <div class="grid-4">
+      <div class="card"><span class="icon">🔐</span><h3>Autoriza</h3><p>Investigar, explicar o revisar es <b>solo lectura</b>. Para cambiar código hace falta intención explícita.</p></div>
+      <div class="card"><span class="icon">🔎</span><h3>Explora</h3><p>Lee el código y los requisitos <b>antes</b> de proponer nada.</p></div>
+      <div class="card"><span class="icon">❓</span><h3>Pregunta lo justo</h3><p>Una sola pregunta, y solo cuando hay una <b>decisión real</b> de producto.</p></div>
+      <div class="card"><span class="icon">🧑‍🏫</span><h3>Te contradice</h3><p>Si el planteo está mal, te explica <b>por qué</b> con evidencia y te muestra el camino correcto.</p></div>
+    </div>
+    <div class="quote">La IA es una herramienta. <span class="pink">El humano decide</span>; el agente ejecuta bajo dirección y verificación.</div>
+  </section>
+
+  <!-- 8. ODD -->
+  <section class="slide">
+    <div class="kicker">ODD · Organic Driven Development</div>
+    <h2>El flujo de todos los días, <span class="pink">sin burocracia</span></h2>
+    <div class="steps">
+      <div class="step"><b>1</b><span>Autorizar</span><small>¿Me pidieron cambiar algo?</small></div>
+      <div class="step"><b>2</b><span>Explorar</span><small>Código y requisitos primero</small></div>
+      <div class="step"><b>3</b><span>Resolver dudas</span><small>Investigar o preguntar solo lo necesario</small></div>
+      <div class="step"><b>4</b><span>Clasificar</span><small>¿Pequeño o sustancial?</small></div>
+      <div class="step hl"><b>5</b><span>Trackear</span><small>Un documento de feature, antes de escribir</small></div>
+      <div class="step"><b>6</b><span>Implementar</span><small>Tarea por tarea, test primero, un commit por tarea</small></div>
+      <div class="step"><b>7</b><span>Cerrar</span><small>Resultado verificado y próximos pasos</small></div>
+    </div>
+    <div class="grid-2" style="margin-top:4vh">
+      <div class="card"><h3>🌱 Trabajo pequeño</h3><p>Se queda pequeño: sin documentos, sin ceremonia. Un typo es un typo.</p></div>
+      <div class="card accent"><h3>🌳 Trabajo sustancial</h3><p><code>odd/tasks/&lt;feature&gt;.md</code> + espejo en memoria: el progreso <b>sobrevive</b> a un corte y se retoma donde quedó.</p></div>
+    </div>
+  </section>
+
+  <!-- 9. ODD diagram -->
+  <section class="slide">
+    <div class="kicker">ODD · Visto completo</div>
+    <img class="diagram" src="../../assets/diagrams/odd-workflow.svg" alt="Diagrama del flujo ODD en siete pasos">
+    <p class="muted" style="margin-top:2vh">Test primero cuando aplica: <span class="error" style="color:var(--error)">RED</span> → <span class="mint">GREEN</span> → <span class="blue">REFACTOR</span>. Si no hay test ejecutable con sentido, se explica por qué y se verifica de otra forma.</p>
+  </section>
+
+  <!-- 10. Feature doc -->
+  <section class="slide">
+    <div class="kicker">El documento de feature</div>
+    <div class="grid-2">
+      <div>
+        <h2>El <span class="pink">formato común</span> que le faltaba al equipo</h2>
+        <ul class="clean">
+          <li>Objetivo, problema, alcance y criterios de aceptación.</li>
+          <li>Checklist con IDs estables y la ruta elegida por tarea.</li>
+          <li>Evidencia observada: comandos y resultados reales.</li>
+          <li>Commit por tarea como prueba. Nada se tilda sin verificar.</li>
+        </ul>
+        <div class="quote" style="font-size:1.2rem">Sin formato compartido, la IA <b>amplifica el desorden</b>. Con formato, convierte experiencia individual en <span class="pink">conocimiento de equipo</span>.</div>
+      </div>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="k"># odd/tasks/accuracy-drop-v4.md</span>
+
+<span class="p">## Objective</span>
+Explain accuracy drop in folder ES-trucks
+
+<span class="p">## Tasks</span>
+<span class="s">- [x]</span> T1 Compare v3 vs v4 metrics  <span class="c">(a1b2c3d)</span>
+<span class="s">- [x]</span> T2 Cluster failing images     <span class="c">(e4f5a6b)</span>
+<span class="dim">- [ ]</span> T3 Validate low-light hypothesis
+
+<span class="p">## Evidence</span>
+pytest compare_versions: <span class="s">12 passed</span>
+<span class="c">night images: 71% of new failures</span>
+
+<span class="p">## Next step</span>
+Run T3 on recalibrated model</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. Agents -->
+  <section class="slide">
+    <div class="kicker">Agentes enfocados</div>
+    <div class="split">
+      <div>
+        <h2>Contexto <span class="pink">con camino de vuelta</span></h2>
+        <p>Una sesión padre dirige; subagentes acotados hacen el trabajo pesado y devuelven <b class="gold">evidencia</b>, no ruido.</p>
+        <div style="margin-top:3vh">
+          <span class="pill">explorar / mapear</span><span class="pill">implementar</span><span class="pill">verificar</span>
+        </div>
+        <ul class="clean" style="margin-top:2vh">
+          <li>4+ archivos para entender → un explorador.</li>
+          <li>2+ archivos no triviales → un escritor.</li>
+          <li>Tests y builds → un verificador.</li>
+        </ul>
+      </div>
+      <img class="diagram" src="../../assets/diagrams/agent-orchestration.svg" alt="Orquestación de agentes">
+    </div>
+  </section>
+
+  <!-- 12. Gentle Agents view -->
+  <section class="slide">
+    <div class="kicker">Gentle Agents · <span class="mono">alt+a</span></div>
+    <div class="split">
+      <div>
+        <h2>Trabajo en paralelo, <span class="pink">a la vista</span></h2>
+        <ul class="clean">
+          <li>Cada subagente es su propio proceso con tarjeta en vivo: modelo, tokens, costo, tiempo.</li>
+          <li>Puedes detenerlos, revisar su historial y retomarlos.</li>
+          <li>Un hijo puede <b class="gold">hacerte una pregunta</b> como un diálogo normal.</li>
+          <li>Los resultados en background vuelven como tarjetas. Nada hace polling.</li>
+        </ul>
+      </div>
+      <img class="shot" src="../../assets/features/agents-view.png" alt="Vista de Gentle Agents">
+    </div>
+  </section>
+
+  <!-- 13. Changes -->
+  <section class="slide">
+    <div class="kicker">Gentle Changes · <span class="mono">alt+g</span></div>
+    <div class="split">
+      <div>
+        <h2>Cada edición, <span class="pink">atribuida y revisable</span></h2>
+        <ul class="clean">
+          <li>Captura las escrituras de la sesión y de sus subagentes.</li>
+          <li>Visor de dos paneles con conteo de líneas por archivo.</li>
+          <li><code>o</code> abre el archivo real en tu editor.</li>
+          <li>Honesto: si no puede mostrar un diff, dice <span class="peach">diff unavailable</span>.</li>
+        </ul>
+      </div>
+      <img class="shot" src="../../assets/features/changes-view.png" alt="Visor de Gentle Changes">
+    </div>
+  </section>
+
+  <!-- 14. Native review -->
+  <section class="slide">
+    <div class="kicker">Revisión nativa · RDD</div>
+    <div class="split">
+      <div>
+        <h2>Revisar el cambio <span class="pink">exacto</span>, no un blanco móvil</h2>
+        <ul class="clean">
+          <li>Congela un candidato y lo revisa según su <b class="gold">riesgo</b>: pasivo, medio o alto.</li>
+          <li>Hallazgos con evidencia y, como máximo, <b class="gold">una</b> corrección acotada.</li>
+          <li>Pide tu consentimiento por candidato.</li>
+          <li><b class="mint">Opt-in</b>: <code>/gentle:review-mode enable</code>. Tú decides commit, push y PR.</li>
+        </ul>
+      </div>
+      <img class="diagram" src="../../assets/diagrams/native-review.svg" alt="Revisión nativa">
+    </div>
+  </section>
+
+  <!-- 15. Profiles -->
+  <section class="slide">
+    <div class="kicker">Perfiles y routing de modelos</div>
+    <div class="split">
+      <div>
+        <h2>Modelo y esfuerzo: <span class="pink">decisiones, no accidentes</span></h2>
+        <ul class="clean">
+          <li>Perfiles con nombre para el orquestador y para cada rol.</li>
+          <li>Un repositorio puede <b class="gold">fijar</b> su perfil.</li>
+          <li>El panel muestra el routing que <b class="gold">realmente</b> usa el runtime.</li>
+          <li>Modelo potente para pensar, uno económico para tareas mecánicas.</li>
+        </ul>
+      </div>
+      <img class="shot" src="../../assets/features/profiles-routing.png" alt="Perfiles y routing">
+    </div>
+  </section>
+
+  <!-- 16. Safety + YOLO -->
+  <section class="slide">
+    <div class="kicker">Seguridad</div>
+    <h2>Velocidad <span class="pink">con</span> barandas</h2>
+    <div class="grid-3">
+      <div class="card"><span class="icon">🛡️</span><h3>Guardas siempre activas</h3><p>Las operaciones destructivas y las rutas sensibles piden confirmación. Siempre.</p></div>
+      <div class="card accent"><span class="icon">🚀</span><h3>YOLO 🔥</h3><p><code>/gentle:yolo enable</code> quita preguntas repetidas en trabajo ya acotado. Solo esta sesión, apagado por defecto.</p></div>
+      <div class="card"><span class="icon">🌐</span><h3>Remoto = permiso explícito</h3><p>Desarrollar en local no autoriza tocar servidores, credenciales ni sesiones remotas.</p></div>
+    </div>
+    <div class="quote">YOLO no es un sandbox: <span class="pink">las confirmaciones destructivas se mantienen</span>.</div>
+  </section>
+
+  <!-- 17. Palette & extras -->
+  <section class="slide">
+    <div class="kicker">Lo nuevo · Calidad de vida</div>
+    <div class="split">
+      <div>
+        <h2>Todo a <span class="pink">un atajo</span> de distancia</h2>
+        <ul class="clean">
+          <li><code>alt+k</code> paleta de comandos agrupada y buscable.</li>
+          <li><code>/gentle:customize</code> tema, layout, densidad, Vim, historial.</li>
+          <li><code>/gentle:stats</code> heatmap de actividad, tokens, costo y modelos.</li>
+          <li>Tarjetas <span class="rose">float</span> o <span class="rose">neon</span> en la conversación.</li>
+          <li>Gentle Todo: el plan se pone <span class="peach">ámbar</span> si el modelo lo deja envejecer.</li>
+        </ul>
+      </div>
+      <img class="shot" src="../../assets/features/command-palette.png" alt="Paleta de comandos">
+    </div>
+  </section>
+
+  <!-- 18. For our team -->
+  <section class="slide">
+    <div class="kicker">Para nuestro equipo</div>
+    <h2>Donde más duele: <span class="pink">testing y diagnóstico</span></h2>
+    <div class="grid-2">
+      <div class="card"><h3>📉 Bajó la tasa de aciertos</h3><p>Un explorador compara métricas entre versiones; el feature doc guarda hipótesis, evidencia y experimentos. La IA <b>propone</b> causas; el humano <b>confirma</b>.</p></div>
+      <div class="card"><h3>🧾 Conocimiento en YAML + tests</h3><p>La IA no evalúa lo especializado: ayuda a <b>construir y mantener</b> el sistema que evalúa, con test primero.</p></div>
+      <div class="card"><h3>⚙️ “Siempre los mismos principios”</h3><p>Skills del proyecto + ODD: la forma de trabajar de la IA queda <b>escrita y repetible</b>, no en cada prompt.</p></div>
+      <div class="card"><h3>🤝 Que el saber no quede en una cabeza</h3><p>Feature docs versionados y memoria opcional con Engram: la próxima persona <b>retoma</b>, no empieza de cero.</p></div>
+    </div>
+  </section>
+
+  <!-- 19. Diagnostic prompt -->
+  <section class="slide">
+    <div class="kicker">Receta práctica</div>
+    <div class="grid-2">
+      <div>
+        <h2>Pedir un <span class="pink">diagnóstico</span> sin conclusiones inventadas</h2>
+        <p class="muted">La IA no diagnostica sola: convierte síntomas en <b class="gold">hipótesis verificables</b> y ayuda a decidir qué mirar primero.</p>
+      </div>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="k">Problema:</span> [descripción concreta]
+
+<span class="k">Evidencia:</span>
+- esperado / actual
+- versión anterior / nueva
+- logs, métricas, imágenes
+- cambios recientes
+
+<span class="p">No quiero una conclusión inventada.</span>
+<span class="s">1.</span> causas ordenadas por probabilidad
+<span class="s">2.</span> evidencia a favor / en contra
+<span class="s">3.</span> qué información falta
+<span class="s">4.</span> experimentos para validar
+<span class="s">5.</span> próximo paso recomendado</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 20. Exercise -->
+  <section class="slide">
+    <div class="kicker">Manos a la obra</div>
+    <h2>Ejercicio en vivo <span class="pink">(30 min)</span></h2>
+    <div class="grid-4">
+      <div class="card"><span class="icon">1️⃣</span><h3>Instalar</h3><p><code>npm i -g gentle-pi</code> y abrir <code>gentle-shell</code> en un repo real.</p></div>
+      <div class="card"><span class="icon">2️⃣</span><h3>Explorar</h3><p>Pedir que explique un módulo. Notar que <b>no edita nada</b>.</p></div>
+      <div class="card"><span class="icon">3️⃣</span><h3>Implementar</h3><p>Pedir un cambio de 2+ pasos y ver nacer el feature doc y los subagentes.</p></div>
+      <div class="card"><span class="icon">4️⃣</span><h3>Revisar</h3><p><code>alt+g</code> para los cambios, <code>alt+a</code> para los agentes, y leer la evidencia.</p></div>
+    </div>
+  </section>
+
+  <!-- 21. Cheat sheet -->
+  <section class="slide">
+    <div class="kicker">Chuleta</div>
+    <h2>Para tener a mano</h2>
+    <table>
+      <tr><th>Atajo / comando</th><th>Qué hace</th></tr>
+      <tr><td>alt+k</td><td>Paleta de comandos</td></tr>
+      <tr><td>alt+g</td><td>Gentle Changes: diffs de lo que hizo el agente</td></tr>
+      <tr><td>alt+a</td><td>Gentle Agents: subagentes en vivo e historial</td></tr>
+      <tr><td>/gentle:customize</td><td>Tema, layout, densidad, Vim, historial, perfiles visuales</td></tr>
+      <tr><td>/gentle:stats</td><td>Historial de uso: tokens, costo, rachas, modelos</td></tr>
+      <tr><td>/gentle:yolo</td><td>Permiso de sesión para trabajo acotado (destructivo sigue preguntando)</td></tr>
+      <tr><td>/gentle:review-mode</td><td>Activar o desactivar la revisión nativa (RDD)</td></tr>
+      <tr><td>/gentle:status · /gentle:doctor</td><td>Estado y diagnóstico de la instalación</td></tr>
+    </table>
+  </section>
+
+  <!-- 22. Close -->
+  <section class="slide cover">
+    <div class="petals" aria-hidden="true"></div>
+    <div class="kicker">Cierre</div>
+    <h1>Tú lideras.<br><span class="grad">El agente ejecuta.</span><br>Todo deja evidencia.</h1>
+    <p class="lead">Menos regresiones · Diagnóstico más rápido · Conocimiento que se comparte.</p>
+    <p class="muted mono" style="margin-top:4vh">github.com/Gentleman-Programming/gentle-shell · gentle-ai.gentlemanprogramming.com</p>
+  </section>
+
+</div>
+
+<div class="brand"><b>gentle-shell</b> · capacitación</div>
+<div class="counter" id="counter"></div>
+<div class="progress" id="progress"></div>
+<div class="hint" id="hint">← → navegar · F pantalla completa · P exportar PDF</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  let i = Math.min(Math.max(parseInt(location.hash.slice(1), 10) - 1 || 0, 0), slides.length - 1);
+
+  function show(n) {
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    counter.textContent = `${i + 1} / ${slides.length}`;
+    progress.style.width = `${((i + 1) / slides.length) * 100}%`;
+    history.replaceState(null, '', `#${i + 1}`);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+    else if (e.key.toLowerCase() === 'p') window.print();
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('a')) show(e.clientX > innerWidth / 3 ? i + 1 : i - 1); });
+
+  // Falling petals on cover slides
+  document.querySelectorAll('.petals').forEach((box) => {
+    for (let k = 0; k < 14; k++) {
+      const p = document.createElement('span');
+      p.textContent = k % 3 ? '❀' : '✿';
+      p.style.left = `${Math.random() * 100}%`;
+      p.style.animationDuration = `${9 + Math.random() * 10}s`;
+      p.style.animationDelay = `${-Math.random() * 18}s`;
+      p.style.fontSize = `${0.9 + Math.random() * 1.2}rem`;
+      box.appendChild(p);
+    }
+  });
+
+  setTimeout(() => document.getElementById('hint').style.opacity = 0, 4000);
+  show(i);
+</script>
+</body>
+</html>
