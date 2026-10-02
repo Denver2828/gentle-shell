@@ -319,9 +319,9 @@ Run T3 on recalibrated model</pre>
           <span class="pill">explorar / mapear</span><span class="pill">implementar</span><span class="pill">verificar</span>
         </div>
         <ul class="clean" style="margin-top:2vh">
-          <li>4+ archivos para entender → un explorador.</li>
-          <li>2+ archivos no triviales → un escritor.</li>
-          <li>Tests y builds → un verificador.</li>
+          <li>Lectura que no cabe en un lote chico (~3 llamadas, ~10k tokens) → un explorador que devuelve un resumen con evidencia <code>path:line</code>.</li>
+          <li>2+ archivos no triviales → un escritor, que verifica su propio trabajo.</li>
+          <li>Verificador independiente según el riesgo del cambio.</li>
         </ul>
       </div>
       <img class="diagram" src="../../assets/diagrams/agent-orchestration.svg" alt="Orquestación de agentes">
