@@ -45,7 +45,7 @@ count and branch switches change the leaf.
       works without `getEntryCount`. Route: delegated writer.
 - [x] T2 — GREEN: implement the memo in `extensions/gentle-shell.ts`. Run the focused tests,
       then the full `pnpm test`. Route: same delegated writer.
-- [ ] T3 — Re-measure with the gentle-aporte bench (Bench A and B) against the patched tree,
+- [x] T3 — Re-measure with the gentle-aporte bench (Bench A and B) against the patched tree,
       and record before/after. Route: same delegated writer.
 
 ## Acceptance criteria
@@ -71,6 +71,21 @@ count and branch switches change the leaf.
   does not import the patched module, or is identical on the unpatched base), provider-contract
   PASS, runtime-harness PASS.
 
+- 2026-10-02: T3 re-measured with the gentle-aporte bench (unchanged; it already calls the exported
+  `buildShellBarModel` over a real Pi 1.0.0 `SessionManager`). Settled cache-hit frames, medians:
+
+  | N | footer digest µs (before → after) | sidebar-on frame ms (before → after) |
+  |---|---|---|
+  | 100 | 20.2 → 4.9 | 0.648 → 0.596 |
+  | 1000 | 164.6 → 6.3 | 0.967 → 0.680 |
+  | 5000 | 1275.7 → 13.6 | 3.190 → 1.258 |
+
+  After the patch the real-digest frame matches the constant-digest control at every N.
+  Cache-miss frames (the session just changed) keep the old cost.
+- 2026-10-02: parent verified `getEntryCount` ships in Pi 0.99.0, 0.99.1 and 0.99.2, so the whole
+  supported peer range has it; the fallback only covers hosts outside that range. The perf commit body
+  was reworded to say so (originally `a8c1d49c`, now `e5ee72bf`; local only, never pushed).
+
 ## Next step
 
-T3 bench numbers go back to the parent for the record; push, fork and PR stay user decisions.
+User decides: fork, push, claim comment on #1681 and PR.
