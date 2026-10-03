@@ -252,6 +252,39 @@ function sessionCost(ctx: ExtensionContext): number {
 	return total;
 }
 
+// Fullscreen rail digests rebuild the footer model every frame, and both
+// session-derived values walk the whole session (gentle-shell#1681). Pi
+// sessions are append-only, so the leaf id and entry count identify a session
+// revision; context usage also follows the model's window. `getEntryCount` is
+// newer than the peer range and absent from ReadonlySessionManager's type, so
+// it is feature-detected and older Pi recomputes every build.
+interface SessionRevision {
+	getLeafId?: () => string | null;
+	getEntryCount?: () => number;
+}
+
+interface SessionDerived {
+	key: string;
+	usage: ReturnType<ExtensionContext["getContextUsage"]>;
+	cost: number;
+}
+
+const sessionDerivedCache = new WeakMap<object, SessionDerived>();
+
+function sessionDerived(ctx: ExtensionContext): Omit<SessionDerived, "key"> {
+	const session = ctx.sessionManager as SessionRevision;
+	if (typeof session.getEntryCount !== "function" || typeof session.getLeafId !== "function") {
+		return { usage: ctx.getContextUsage(), cost: sessionCost(ctx) };
+	}
+	const model = ctx.model;
+	const key = JSON.stringify([session.getLeafId(), session.getEntryCount(), model?.provider ?? null, model?.id ?? null, model?.contextWindow ?? null]);
+	const cached = sessionDerivedCache.get(ctx.sessionManager);
+	if (cached?.key === key) return cached;
+	const fresh = { key, usage: ctx.getContextUsage(), cost: sessionCost(ctx) };
+	sessionDerivedCache.set(ctx.sessionManager, fresh);
+	return fresh;
+}
+
 export function buildShellBarModel(
 	pi: ExtensionAPI,
 	ctx: ExtensionContext,
@@ -259,7 +292,7 @@ export function buildShellBarModel(
 	options: BuildOptions = {},
 ): ShellBarModel {
 	const home = options.home ?? os.homedir();
-	const usage = ctx.getContextUsage();
+	const { usage, cost } = sessionDerived(ctx);
 	const model = ctx.model;
 	const statuses = Array.from(footerData.getExtensionStatuses().entries())
 		.sort(([a], [b]) => a.localeCompare(b))
@@ -274,7 +307,7 @@ export function buildShellBarModel(
 		effort: model?.reasoning ? pi.getThinkingLevel() : undefined,
 		contextPercent: usage?.percent ?? null,
 		contextWindow: usage?.contextWindow ?? model?.contextWindow ?? 0,
-		costTotal: sessionCost(ctx),
+		costTotal: cost,
 		subscription: model ? ctx.modelRegistry.isUsingOAuth(model) : false,
 		usage: options.usage,
 		statuses,
