@@ -252,12 +252,14 @@ function sessionCost(ctx: ExtensionContext): number {
 	return total;
 }
 
-// Fullscreen rail digests rebuild the footer model every frame, and both
-// session-derived values walk the whole session (gentle-shell#1681). Pi
-// sessions are append-only, so the leaf id and entry count identify a session
-// revision; context usage also follows the model's window. `getEntryCount` is
-// newer than the peer range and absent from ReadonlySessionManager's type, so
-// it is feature-detected and older Pi recomputes every build.
+// Fullscreen rail digests rebuild the footer model every frame, and the
+// session-derived values walk the whole session (gentle-shell#1681): context
+// usage and cost always, and the session name when no session_info entry
+// exists. Pi sessions are append-only, so the leaf id and entry count identify
+// a session revision (a rename appends a session_info entry); context usage
+// also follows the model's window. `getEntryCount` is absent from
+// ReadonlySessionManager's type, so it is feature-detected and a session
+// manager without it recomputes every build.
 interface SessionRevision {
 	getLeafId?: () => string | null;
 	getEntryCount?: () => number;
@@ -267,6 +269,7 @@ interface SessionDerived {
 	key: string;
 	usage: ReturnType<ExtensionContext["getContextUsage"]>;
 	cost: number;
+	sessionName: string | undefined;
 }
 
 const sessionDerivedCache = new WeakMap<object, SessionDerived>();
@@ -274,13 +277,13 @@ const sessionDerivedCache = new WeakMap<object, SessionDerived>();
 function sessionDerived(ctx: ExtensionContext): Omit<SessionDerived, "key"> {
 	const session = ctx.sessionManager as SessionRevision;
 	if (typeof session.getEntryCount !== "function" || typeof session.getLeafId !== "function") {
-		return { usage: ctx.getContextUsage(), cost: sessionCost(ctx) };
+		return { usage: ctx.getContextUsage(), cost: sessionCost(ctx), sessionName: ctx.sessionManager.getSessionName() };
 	}
 	const model = ctx.model;
 	const key = JSON.stringify([session.getLeafId(), session.getEntryCount(), model?.provider ?? null, model?.id ?? null, model?.contextWindow ?? null]);
 	const cached = sessionDerivedCache.get(ctx.sessionManager);
 	if (cached?.key === key) return cached;
-	const fresh = { key, usage: ctx.getContextUsage(), cost: sessionCost(ctx) };
+	const fresh = { key, usage: ctx.getContextUsage(), cost: sessionCost(ctx), sessionName: ctx.sessionManager.getSessionName() };
 	sessionDerivedCache.set(ctx.sessionManager, fresh);
 	return fresh;
 }
@@ -292,7 +295,7 @@ export function buildShellBarModel(
 	options: BuildOptions = {},
 ): ShellBarModel {
 	const home = options.home ?? os.homedir();
-	const { usage, cost } = sessionDerived(ctx);
+	const { usage, cost, sessionName } = sessionDerived(ctx);
 	const model = ctx.model;
 	const statuses = Array.from(footerData.getExtensionStatuses().entries())
 		.sort(([a], [b]) => a.localeCompare(b))
@@ -302,7 +305,7 @@ export function buildShellBarModel(
 		profile: options.profile,
 		branch: footerData.getGitBranch(),
 		dirty: options.dirty,
-		sessionName: ctx.sessionManager.getSessionName(),
+		sessionName,
 		modelId: model?.id ?? "no-model",
 		effort: model?.reasoning ? pi.getThinkingLevel() : undefined,
 		contextPercent: usage?.percent ?? null,

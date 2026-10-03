@@ -85,6 +85,12 @@ count and branch switches change the leaf.
 - 2026-10-02: parent verified `getEntryCount` ships in Pi 0.99.0, 0.99.1 and 0.99.2, so the whole
   supported peer range has it; the fallback only covers hosts outside that range. The perf commit body
   was reworded to say so (originally `a8c1d49c`, now `e5ee72bf`; local only, never pushed).
+- 2026-10-03: CodeRabbit review on PR #1697 (minor, outside the diff): `getSessionName()` scans
+  every entry when no session_info entry exists. Cached the name with the same revision key (a rename
+  appends a session_info entry). RED: unchanged-session test failed with 6 name lookups instead of 1;
+  GREEN: focused + shell-bar 61/61; the 11 test files importing the module show the same 5 base
+  failures; typecheck no regressions. Also corrected the source comment that called
+  `getEntryCount` newer than the peer range.
 
 ## Next step
 

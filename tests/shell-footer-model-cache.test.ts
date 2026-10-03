@@ -19,13 +19,17 @@ function assistant(id: string, cost: number): FakeEntry {
 }
 
 function fakeSession({ entryCount = true }: { entryCount?: boolean } = {}) {
-	const calls = { usage: 0, entries: 0 };
+	const calls = { usage: 0, entries: 0, name: 0 };
 	const entries: FakeEntry[] = [assistant("a1", 0.5), assistant("a2", 0.25)];
 	let leafId: string | null = "a2";
+	let sessionName: string | undefined = "Release notes";
 	const model = { provider: "openai", id: "gpt-5.5", reasoning: true, contextWindow: 200_000 };
 	const sessionManager: Record<string, unknown> = {
 		getCwd: () => "/repo",
-		getSessionName: () => "Release notes",
+		getSessionName: () => {
+			calls.name += 1;
+			return sessionName;
+		},
 		getLeafId: () => leafId,
 		getEntries: () => {
 			calls.entries += 1;
@@ -60,6 +64,11 @@ function fakeSession({ entryCount = true }: { entryCount?: boolean } = {}) {
 			entries.push(entry);
 			leafId = entry.id;
 		},
+		rename(name: string) {
+			// Pi records a rename as an appended session_info entry.
+			entries.push({ type: "session_info", id: `info-${entries.length}` });
+			sessionName = name;
+		},
 		setLeaf(id: string | null) {
 			leafId = id;
 		},
@@ -75,6 +84,7 @@ test("an unchanged session and model walk the session once across repeated build
 	for (let frame = 0; frame < 5; frame += 1) assert.deepEqual(session.build(), first);
 	assert.equal(session.calls.usage, 1);
 	assert.equal(session.calls.entries, 1);
+	assert.equal(session.calls.name, 1);
 	assert.equal(first.costTotal, 0.75);
 	assert.equal(first.contextPercent, 1);
 });
@@ -122,4 +132,12 @@ test("without getEntryCount every build recomputes", () => {
 	session.build();
 	assert.equal(session.calls.usage, 3);
 	assert.equal(session.calls.entries, 3);
+});
+
+test("a rename refreshes the cached session name", () => {
+	const session = fakeSession();
+	assert.equal(session.build().sessionName, "Release notes");
+	session.rename("Hotfix");
+	assert.equal(session.build().sessionName, "Hotfix");
+	assert.equal(session.calls.name, 2);
 });
